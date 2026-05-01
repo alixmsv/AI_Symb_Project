@@ -1,0 +1,67 @@
+node.js
+clone git clone https://github.com/google-gemini/live-api-web-console.git
+Changing the foldr name to video-labeler-demo
+adding the API-key to the .env file
+
+inside video-labler-demo >npm install
+again > npm start
+it will open a browse....http://localhost:3000/
+
+_________________________
+Setting model:
+src\components\altair\Altair.tsx
+    setModel("models/gemini-2.0-flash-exp");
+    setModel("models/gemini-3.1-flash-live-preview");
+src\hooks\use-live-api.ts
+    useState<string>("models/gemini-2.0-flash-exp");
+    useState<string>("models/gemini-3.1-flash-live-preview");
+____________________________________________
+update the SDK:
+package.json
+    -> "@google/genai": "^1.50.1", was too old
+    -> we installed the newest version
+        npm install @google/genai@latest
+
+    -> restart the app (cntrl+C)
+    -> then >npm start
+
+_________________________________________________
+changing the send realtime input:
+src\lib\genai-live-client.ts
+
+inside the sendRealtiemInput function... replace...
+
+this:
+for (const ch of chunks) {
+  this.session?.sendRealtimeInput({ media: ch });
+  if (ch.mimeType.includes("audio")) {
+    hasAudio = true;
+  }
+  if (ch.mimeType.includes("image")) {
+    hasVideo = true;
+  }
+  if (hasAudio && hasVideo) {
+    break;
+  }
+}
+
+with this:
+for (const ch of chunks) {
+  if (ch.mimeType.includes("audio")) {
+    this.session?.sendRealtimeInput({ audio: ch });
+    hasAudio = true;
+  } else if (ch.mimeType.includes("image")) {
+    this.session?.sendRealtimeInput({ video: ch });
+    hasVideo = true;
+  }
+
+  if (hasAudio && hasVideo) {
+    break;
+  }
+}
+
+____________________________________________
+To start the host:
+
+> npm start
+________________________________________________
