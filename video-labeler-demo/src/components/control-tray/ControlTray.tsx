@@ -25,6 +25,7 @@ import { AudioRecorder } from "../../lib/audio-recorder";
 import AudioPulse from "../audio-pulse/AudioPulse";
 import "./control-tray.scss";
 import SettingsDialog from "../settings-dialog/SettingsDialog";
+import { useMonitorStore } from "../../assembly/store";
 
 export type ControlTrayProps = {
   videoRef: RefObject<HTMLVideoElement>;
@@ -74,6 +75,10 @@ function ControlTray({
   const [muted, setMuted] = useState(false);
   const renderCanvasRef = useRef<HTMLCanvasElement>(null);
   const connectButtonRef = useRef<HTMLButtonElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // a recorded video can stand in for the camera
+  const videoFile = useMonitorStore((s) => s.videoFile);
+  const setVideoFile = useMonitorStore((s) => s.setVideoFile);
 
   const { client, connected, connect, disconnect, volume } =
     useLiveAPIContext();
@@ -100,7 +105,19 @@ function ControlTray({
       ]);
     };
     if (connected && !muted && audioRecorder) {
-      audioRecorder.on("data", onData).on("volume", setInVolume).start();
+      audioRecorder
+        .on("data", onData)
+        .on("volume", setInVolume)
+        .start()
+        .catch(() => {
+          // no microphone: the AI can still watch and talk, it just cannot hear
+          setMuted(true);
+          useMonitorStore
+            .getState()
+            .setNotice(
+              "The microphone is blocked, so the AI cannot hear you. It still watches and speaks. Allow the microphone in the browser to talk to it."
+            );
+        });
     } else {
       audioRecorder.stop();
     }
@@ -109,11 +126,40 @@ function ControlTray({
     };
   }, [connected, client, muted, audioRecorder]);
 
+  // show either the live stream or the recorded file in the video element
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.srcObject = activeVideoStream;
+    const video = videoRef.current;
+    if (!video) {
+      return;
     }
+    if (videoFile) {
+      // playback of a file is started by the player controls, not on load
+      video.autoplay = false;
+      video.srcObject = null;
+      video.src = videoFile.url;
+    } else {
+      if (video.getAttribute("src")) {
+        video.removeAttribute("src");
+        video.load();
+      }
+      video.autoplay = true;
+      video.srcObject = activeVideoStream;
+    }
+  }, [videoFile, activeVideoStream, videoRef]);
 
+  // a recorded video replaces the camera or screen share
+  useEffect(() => {
+    if (videoFile && activeVideoStream) {
+      setActiveVideoStream(null);
+      onVideoStreamChange(null);
+      webcam.stop();
+      screenCapture.stop();
+    }
+    // only react to a newly loaded file
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoFile]);
+
+  useEffect(() => {
     let timeoutId = -1;
 
     function sendVideoFrame() {
@@ -124,31 +170,50 @@ function ControlTray({
         return;
       }
 
+      // a paused or finished recording has nothing new to show
+      const idle = videoFile !== null && (video.paused || video.ended);
       const ctx = canvas.getContext("2d")!;
-      canvas.width = video.videoWidth * 0.25;
-      canvas.height = video.videoHeight * 0.25;
-      if (canvas.width + canvas.height > 0) {
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const base64 = canvas.toDataURL("image/jpeg", 1.0);
+      // small parts need detail: send frames up to 1024px wide
+      const scale = Math.min(1, 1024 / (video.videoWidth || 1024));
+      canvas.width = video.videoWidth * scale;
+      canvas.height = video.videoHeight * scale;
+      if (!idle && canvas.width + canvas.height > 0) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const base64 = canvas.toDataURL("image/jpeg", 0.8);
         const data = base64.slice(base64.indexOf(",") + 1, Infinity);
         client.sendRealtimeInput([{ mimeType: "image/jpeg", data }]);
       }
       if (connected) {
-        timeoutId = window.setTimeout(sendVideoFrame, 1000 / 0.5);
+        // 1 frame per second is the most the Live API accepts
+        timeoutId = window.setTimeout(sendVideoFrame, 1000);
       }
     }
-    if (connected && activeVideoStream !== null) {
+    if (connected && (activeVideoStream !== null || videoFile !== null)) {
       requestAnimationFrame(sendVideoFrame);
     }
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [connected, activeVideoStream, client, videoRef]);
+  }, [connected, activeVideoStream, videoFile, client, videoRef]);
 
   //handler for swapping from one video-stream to the next
   const changeStreams = (next?: UseMediaStreamResult) => async () => {
+    setVideoFile(null);
     if (next) {
-      const mediaStream = await next.start();
+      let mediaStream: MediaStream;
+      try {
+        mediaStream = await next.start();
+      } catch (e) {
+        useMonitorStore
+          .getState()
+          .setNotice(
+            next.type === "webcam"
+              ? "The camera could not be started. Allow camera access in the browser, check that no other app is using it, then try again."
+              : "Screen sharing was cancelled or blocked."
+          );
+        return;
+      }
+      useMonitorStore.getState().setNotice(null);
       setActiveVideoStream(mediaStream);
       onVideoStreamChange(mediaStream);
     } else {
@@ -193,6 +258,39 @@ function ControlTray({
               stop={changeStreams()}
               onIcon="videocam_off"
               offIcon="videocam"
+            />
+            <button
+              className="action-button"
+              // a recording can be loaded before the AI is connected
+              style={{ pointerEvents: "auto" }}
+              title={
+                videoFile
+                  ? "Close the video file"
+                  : "Use a recorded video instead of the camera"
+              }
+              onClick={() =>
+                videoFile ? setVideoFile(null) : fileInputRef.current?.click()
+              }
+            >
+              <span className="material-symbols-outlined">
+                {videoFile ? "movie_off" : "movie"}
+              </span>
+            </button>
+            <input
+              ref={fileInputRef}
+              className="video-file-input"
+              type="file"
+              accept="video/*"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) {
+                  return;
+                }
+                useMonitorStore.getState().setNotice(null);
+                setVideoFile(file);
+              }}
             />
           </>
         )}

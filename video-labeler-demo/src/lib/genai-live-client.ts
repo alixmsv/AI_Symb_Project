@@ -62,6 +62,10 @@ export interface LiveClientEventTypes {
   ) => void;
   // Emitted when the current turn is complete
   turncomplete: () => void;
+  // Emitted with pieces of the text version of what the model is saying
+  outputtranscription: (text: string) => void;
+  // Emitted with pieces of the text version of what the user is saying
+  inputtranscription: (text: string) => void;
 }
 
 /**
@@ -171,6 +175,8 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
       `server.close`,
       `disconnected ${e.reason ? `with reason: ${e.reason}` : ``}`
     );
+    this._session = null;
+    this._status = "disconnected";
     this.emit("close", e);
   }
 
@@ -193,8 +199,20 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
 
     // this json also might be `contentUpdate { interrupted: true }`
     // or contentUpdate { end_of_turn: true }
+    if (message.goAway) {
+      this.log("server.goAway", `session ends in ${message.goAway.timeLeft}`);
+      return;
+    }
+
     if (message.serverContent) {
       const { serverContent } = message;
+      // one message can carry a transcript next to audio or turnComplete
+      if (serverContent.outputTranscription?.text) {
+        this.emit("outputtranscription", serverContent.outputTranscription.text);
+      }
+      if (serverContent.inputTranscription?.text) {
+        this.emit("inputtranscription", serverContent.inputTranscription.text);
+      }
       if ("interrupted" in serverContent) {
         this.log("server.content", "interrupted");
         this.emit("interrupted");
@@ -247,18 +265,18 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
     let hasAudio = false;
     let hasVideo = false;
     for (const ch of chunks) {
-  if (ch.mimeType.includes("audio")) {
-    this.session?.sendRealtimeInput({ audio: ch });
-    hasAudio = true;
-  } else if (ch.mimeType.includes("image")) {
-    this.session?.sendRealtimeInput({ video: ch });
-    hasVideo = true;
-  }
+      if (ch.mimeType.includes("audio")) {
+        this.session?.sendRealtimeInput({ audio: ch });
+        hasAudio = true;
+      } else if (ch.mimeType.includes("image")) {
+        this.session?.sendRealtimeInput({ video: ch });
+        hasVideo = true;
+      }
 
-  if (hasAudio && hasVideo) {
-    break;
-  }
-}
+      if (hasAudio && hasVideo) {
+        break;
+      }
+    }
     const message =
       hasAudio && hasVideo
         ? "audio + video"
@@ -268,6 +286,19 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
         ? "video"
         : "unknown";
     this.log(`client.realtimeInput`, message);
+  }
+
+  /**
+   * send text on the realtime channel. The model treats it as a user turn and
+   * answers it, which is how the app asks the model to look at the video.
+   */
+  sendRealtimeText(text: string) {
+    if (!this.session) {
+      return false;
+    }
+    this.session.sendRealtimeInput({ text });
+    this.log(`client.realtimeInput`, `text: ${text}`);
+    return true;
   }
 
   /**

@@ -32,6 +32,8 @@ export type UseLiveAPIResults = {
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   volume: number;
+  /** why the last session ended or failed to start, if it was not the user */
+  lastError: string | null;
 };
 
 export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
@@ -42,6 +44,9 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
   const [config, setConfig] = useState<LiveConnectConfig>({});
   const [connected, setConnected] = useState(false);
   const [volume, setVolume] = useState(0);
+  const [lastError, setLastError] = useState<string | null>(null);
+  // true while the user wants the session to be up
+  const wantConnectedRef = useRef(false);
 
   // register audio for streaming server -> speakers
   useEffect(() => {
@@ -62,14 +67,27 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
   useEffect(() => {
     const onOpen = () => {
       setConnected(true);
+      setLastError(null);
     };
 
-    const onClose = () => {
+    const onClose = (event: CloseEvent) => {
       setConnected(false);
+      if (wantConnectedRef.current) {
+        // the server ended the session, not the user
+        wantConnectedRef.current = false;
+        setLastError(
+          event?.reason
+            ? `Session ended: ${event.reason}`
+            : "Session ended. Press play to continue."
+        );
+      }
     };
 
     const onError = (error: ErrorEvent) => {
       console.error("error", error);
+      if (error?.message) {
+        setLastError(error.message);
+      }
     };
 
     const stopAudioStreamer = () => audioStreamerRef.current?.stop();
@@ -100,10 +118,19 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
       throw new Error("config has not been set");
     }
     client.disconnect();
-    await client.connect(model, config);
+    setLastError(null);
+    wantConnectedRef.current = true;
+    const ok = await client.connect(model, config);
+    if (!ok) {
+      wantConnectedRef.current = false;
+      setLastError(
+        "Could not connect to Gemini. Check the API key in .env and your internet connection."
+      );
+    }
   }, [client, config, model]);
 
   const disconnect = useCallback(async () => {
+    wantConnectedRef.current = false;
     client.disconnect();
     setConnected(false);
   }, [setConnected, client]);
@@ -118,5 +145,6 @@ export function useLiveAPI(options: LiveClientOptions): UseLiveAPIResults {
     connect,
     disconnect,
     volume,
+    lastError,
   };
 }

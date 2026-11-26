@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "assembly-monitor",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "cd video-labeler-demo && set BROWSER=none&& npm start"
+      ],
+      "port": 3000
+    }
+  ]
+}

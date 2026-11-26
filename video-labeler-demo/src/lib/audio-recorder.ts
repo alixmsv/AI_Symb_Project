@@ -50,7 +50,8 @@ export class AudioRecorder extends EventEmitter {
       throw new Error("Could not request user media");
     }
 
-    this.starting = new Promise(async (resolve, reject) => {
+    const starting = new Promise<void>(async (resolve, reject) => {
+      try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.audioContext = await audioContext({ sampleRate: this.sampleRate });
       this.source = this.audioContext.createMediaStreamSource(this.stream);
@@ -89,7 +90,14 @@ export class AudioRecorder extends EventEmitter {
       this.recording = true;
       resolve();
       this.starting = null;
+      } catch (e) {
+        // e.g. the microphone was blocked: let the caller deal with it
+        this.starting = null;
+        reject(e);
+      }
     });
+    this.starting = starting;
+    return starting;
   }
 
   stop() {
@@ -103,7 +111,7 @@ export class AudioRecorder extends EventEmitter {
       this.vuWorklet = undefined;
     };
     if (this.starting) {
-      this.starting.then(handleStop);
+      this.starting.then(handleStop, handleStop);
       return;
     }
     handleStop();
