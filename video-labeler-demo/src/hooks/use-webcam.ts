@@ -16,6 +16,7 @@
 
 import { useState, useEffect } from "react";
 import { UseMediaStreamResult } from "./use-media-stream-mux";
+import { useMonitorStore } from "../assembly/store";
 
 export function useWebcam(): UseMediaStreamResult {
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -41,9 +42,21 @@ export function useWebcam(): UseMediaStreamResult {
   }, [stream]);
 
   const start = async () => {
-    const mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-    });
+    const cameraId = useMonitorStore.getState().cameraId;
+    const size = { width: { ideal: 1280 }, height: { ideal: 720 } };
+    let mediaStream: MediaStream;
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: cameraId ? { deviceId: { exact: cameraId }, ...size } : size,
+      });
+    } catch (e) {
+      if (!cameraId) {
+        throw e;
+      }
+      // the remembered camera is unplugged: fall back to the default one
+      useMonitorStore.getState().setCameraId(null);
+      mediaStream = await navigator.mediaDevices.getUserMedia({ video: size });
+    }
     setStream(mediaStream);
     setIsStreaming(true);
     return mediaStream;

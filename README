@@ -1,0 +1,330 @@
+# AI Symbiosis Assembly Monitor
+
+This repository contains a live video AI demo built around the Gemini Live API. A webcam watches an operator doing a mock industrial assembly task. The AI follows the work instruction step by step, ticks off the checklist, and warns the operator by voice and on screen when a step is skipped, done in the wrong order, or done incorrectly.
+
+The long-term goal of this project is to explore human-AI symbiosis for task monitoring: an AI system that can observe a task, understand the procedure, and later assist or warn a user when something is missed or done incorrectly.
+
+## Current Demo
+
+The app is located in:
+
+```bash
+video-labeler-demo/
+```
+
+It started from the Gemini Live API web console starter project and now contains the assembly monitor.
+
+Two mock procedures are built in. Both can be done at a desk with everyday objects:
+
+* **Retractable pen assembly**: take a click pen apart and reassemble it (kitting check, spring onto refill, refill into barrel, close barrel, function test, place in output).
+* **Bolted bracket joint**: bolt, two washers and a nut through two plates, tightened with a wrench and marked.
+
+You can also write your own procedure in the app (see "Teaching the AI your own task").
+
+## Features
+
+* Live checklist: the AI marks each step as started or completed from what it sees
+* Skipped-step and wrong-order detection by fixed rules, not left to the model
+* Alerts on screen, as an alarm sound, and spoken by the AI, with a suggested fix
+* Two voice modes: "Coach" talks the operator through each step, "Watch" only speaks when something is wrong
+* The operator can talk to the AI ("what is next?") and can correct the checklist by hand
+* Timeline of every step, alert and spoken line, exportable as JSON
+* Procedure editor for your own tasks
+* Camera selector for an external webcam
+* Recorded videos: load your own video file, or use the two built-in sample clips of the pen assembly
+* Simulator to try the checklist and alerts without a camera or API key
+* Environment-variable based API key setup; `.env` files are ignored for safety
+
+## Requirements
+
+Before running the project, install:
+
+* Node.js 18 or newer
+* npm
+* Git
+* A Gemini API key from Google AI Studio
+
+You can check your Node.js installation with:
+
+```bash
+node -v
+```
+
+You can check Git with:
+
+```bash
+git --version
+```
+
+## Project Structure
+
+```bash
+AI_Symb_Project/
+├── README.md
+├── .gitignore
+├── notebooks/
+├── steps_hist.txt
+└── video-labeler-demo/
+    ├── public/
+    ├── scripts/            # connection check (npm run smoke)
+    ├── src/
+    │   ├── assembly/       # procedures, rules, AI tools and prompts
+    │   └── components/assembly/   # operator screen
+    ├── package.json
+    ├── package-lock.json
+    ├── .env.example
+    └── .gitignore
+```
+
+## Setup Instructions
+
+### 1. Clone the repository
+
+```bash
+git clone <your-repository-url>
+cd AI_Symb_Project
+```
+
+### 2. Go into the demo app
+
+```bash
+cd video-labeler-demo
+```
+
+### 3. Install dependencies
+
+```bash
+npm install
+```
+
+### 4. Create your local environment file
+
+Copy the example environment file.
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+On macOS/Linux:
+
+```bash
+cp .env.example .env
+```
+
+### 5. Add your Gemini API key
+
+Open the newly created `.env` file and replace the placeholder value:
+
+```env
+REACT_APP_GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+Do not commit your `.env` file to GitHub.
+
+The `.env` file is intentionally ignored because it contains private credentials.
+
+### 6. Start the app
+
+From inside `video-labeler-demo/`, run:
+
+```bash
+npm start
+```
+
+The app should open at:
+
+```bash
+http://localhost:3000
+```
+
+If it does not open automatically, copy the URL into your browser.
+
+## Using the Demo
+
+1. Open `http://localhost:3000`.
+2. Pick a procedure at the top left and get the parts ready.
+3. Press the play button at the bottom to connect the AI. Allow the microphone if you want to talk to it.
+4. Press the camera button and point the camera at your table. Good light and a plain background help.
+5. Do the steps. The current instruction is shown under the video, the checklist is on the right.
+6. Try a mistake: for the pen, screw the barrel together without the spring. The step is marked as skipped and the AI warns you.
+7. When all steps are done the run is marked complete. "Export run" downloads the log.
+
+If the AI gets something wrong, use the small buttons next to each step to mark it done or reopen it, and "Dismiss" to close an alert.
+
+### Using a recorded video instead of the camera
+
+* **Sample clips:** before the camera is on, the start screen shows two buttons under "No parts at hand? Use a sample video": **Correct run** and **Spring skipped**. They are animated drawings of the pen assembly, not real footage. In the second one the spring stays on the table, so the AI should flag step 2 as skipped.
+* **Your own video:** press the film button (next to the camera button at the bottom) and pick a video file. Film the table from above, with the parts large in the picture.
+
+Press play to connect the AI. The video starts playing as soon as the AI is connected and pauses when you disconnect. Use the bar under the picture to pause, restart or jump; the restart button also clears the checklist. Mute the microphone so the AI does not react to room noise.
+
+### Trying it without a camera or API key
+
+Click **Simulator** at the top right. Its buttons send the same reports the AI would send ("does the next step", "skips a step", "makes a mistake"), so you can see the checklist, alerts and sounds work.
+
+## Selecting a Different Webcam
+
+Use the **Camera** selector in the toolbar, then turn the camera off and on again with the camera button. Camera names appear after the browser has been given camera permission once.
+
+## Environment Variables
+
+```env
+REACT_APP_GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+Optional, to try another Live model (the default is `models/gemini-3.1-flash-live-preview`):
+
+```env
+REACT_APP_GEMINI_MODEL=models/your-live-model
+```
+
+A safe example is provided in:
+
+```bash
+video-labeler-demo/.env.example
+```
+
+The real `.env` file should only exist locally on your machine. Restart `npm start` after changing it.
+
+## Important Security Note
+
+Never commit API keys, passwords, tokens, or secrets to GitHub.
+
+This repository uses `.gitignore` rules to prevent `.env` files from being tracked:
+
+```gitignore
+.env
+.env.*
+**/.env
+**/.env.*
+
+!.env.example
+!**/.env.example
+```
+
+If an API key is accidentally pushed to a public repository, it should be treated as exposed. The safest response is to revoke the exposed key and create a new one.
+
+## Common Commands
+
+Run the app:
+
+```bash
+cd video-labeler-demo
+npm start
+```
+
+Install dependencies:
+
+```bash
+cd video-labeler-demo
+npm install
+```
+
+Check Git status:
+
+```bash
+git status
+```
+
+Check whether `.env` is ignored:
+
+```bash
+git check-ignore -v video-labeler-demo/.env
+```
+
+## Troubleshooting
+
+### `npm start` says it cannot find `package.json`
+
+You are probably running the command from the wrong folder.
+
+Run:
+
+```bash
+cd video-labeler-demo
+npm start
+```
+
+The `package.json` file is inside `video-labeler-demo/`, not the root folder.
+
+### Browser does not show the webcam
+
+Check:
+
+* The webcam is plugged in.
+* The browser has camera permission.
+* No other app is using the camera.
+* The correct camera is selected in browser site settings.
+
+### API quota or billing error
+
+If you see an error about quota or billing, check your Gemini API project usage and billing settings in Google AI Studio or Google Cloud.
+
+### Model connection error
+
+If the app says a model is not found or not supported, the model name in the code may be outdated. Check the model setting inside the app code and update it to a currently supported Gemini Live model.
+
+### "Your API key was reported as leaked"
+
+Google blocks keys it has found in a public place, for example in an earlier commit of a public repository. Create a new key in Google AI Studio, put it in `video-labeler-demo/.env`, delete the old key, and restart `npm start`.
+
+### The AI does not react to what I do
+
+* Check that the chip on the video says "AI is watching" (connected and camera on).
+* Keep the parts large in the picture and well lit; small parts like a spring are hard to see from far away.
+* Open the Console panel on the left to see the tool calls the AI sends.
+* Run the connection check: `npm run smoke` inside `video-labeler-demo/`.
+* Run the video test (see "Commands") to see what the AI reports for a known clip.
+* Keep the browser tab visible while a recorded video plays. Browsers pause muted videos in background tabs to save power, and then the AI sees a frozen picture.
+
+## Development Notes
+
+### How it works
+
+* `src/assembly/procedures.ts`: the work instructions (steps, what the camera sees when a step is done, typical mistakes).
+* `src/assembly/instructions.ts` and `liveConfig.ts`: the system instruction and the four tools the model can call (`update_step`, `report_issue`, `resolve_issue`, `log_observation`).
+* `src/assembly/engine.ts`: the rules. The model only reports what it sees; the rules decide what it means. Finishing a later step while an earlier one is open marks the earlier one as skipped and raises an alert.
+* `src/assembly/useAssemblyMonitor.ts`: connects the two. The Live model does not react to video on its own, so the app sends it a short "look now" message every few seconds ("Check every" in the toolbar) and applies the tool calls it answers with.
+* `src/components/assembly/`: the operator screen.
+
+### Teaching the AI your own task
+
+Click **Edit** next to the procedure selector. A procedure is JSON: a name, parts, and steps. Each step needs a `title`, an `instruction` for the operator, and a `doneWhen` that describes what the camera sees once the step is finished. Add `"critical": true` to steps that must never be skipped. Saving creates your own copy, stored in the browser.
+
+### Commands
+
+Run inside `video-labeler-demo/`:
+
+```bash
+npm test
+```
+
+runs the unit tests for the rules, tools and prompts.
+
+```bash
+npm run smoke
+```
+
+opens a real Gemini Live session without a browser and checks that the model accepts the configuration and answers with tool calls.
+
+```bash
+python scripts/make_test_video.py --frames ../test-frames
+npm run video-test -- ../test-frames/pen-assembly-spring-skipped skip:S2
+npm run video-test -- ../test-frames/pen-assembly-correct complete
+```
+
+The first command rebuilds the sample clips in `public/test-videos/` and saves one picture per second of each clip. The other two play those pictures into the real model, the way the app does, and print every step and alert the AI reports, then PASS or FAIL. Each run takes about a minute and uses your API quota. (`test-frames` is a scratch folder; delete it afterwards.) The generator needs Python with `opencv-python`, `numpy` and `pillow`.
+
+### Known limits
+
+* Recognition quality depends on the model, lighting and camera angle. The AI sees one frame per second.
+* The model sometimes reports steps it cannot have seen. The app limits this: it ignores step updates while no picture is being sent, before the AI has been asked to look, and when the AI ticks off more than two steps in one answer.
+* The sample clips are simple drawings. They test the whole chain, but real footage of real parts is harder for the model.
+* A Live connection lasts about ten minutes. When it ends, press play again; the checklist is kept and sent to the new session.
+* Runs and custom procedures are stored only in the browser.
+
+## License
+
+This project is based partly on a Google Gemini Live API starter project. Check the included license files and original project license before redistributing or using commercially.

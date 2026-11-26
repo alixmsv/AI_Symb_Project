@@ -1,0 +1,1096 @@
+/* Operator screen of the assembly monitor. Uses the colour tokens of App.scss. */
+
+.assembly {
+  --ok: #3ddc84;
+  --ok-bg: rgba(13, 156, 83, 0.18);
+  --warn: #ffc24b;
+  --warn-bg: rgba(255, 194, 75, 0.16);
+  --crit: #ff6b4a;
+  --crit-bg: rgba(255, 70, 0, 0.2);
+  --panel: var(--Neutral-10);
+  --line: var(--Neutral-20);
+
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  /* room for the floating control tray at the bottom */
+  padding: 12px 16px 92px;
+  gap: 12px;
+  color: var(--Neutral-90);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  box-sizing: border-box;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .material-symbols-outlined {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+
+  button:not(.material-symbols-outlined) {
+    font-family: inherit;
+  }
+
+  button:disabled,
+  select:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+/* ---------- header ---------- */
+
+.assembly-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 14px;
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .toolbar {
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+    gap: 10px;
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--Neutral-60);
+    font-size: 12px;
+    min-width: 0;
+
+    select,
+    input {
+      background: var(--Neutral-15);
+      color: var(--Neutral-90);
+      border: 1px solid var(--Neutral-30);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font: inherit;
+      font-size: 13px;
+      max-width: 260px;
+      min-width: 0;
+    }
+
+    input[type="number"] {
+      width: 56px;
+    }
+
+    .number-with-unit {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+
+  .procedure-field select {
+    font-size: 15px;
+    font-weight: 600;
+    max-width: 380px;
+  }
+
+  .status-pill {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: var(--Neutral-20);
+    color: var(--Neutral-80);
+
+    &.status-running {
+      background: var(--Blue-800);
+      color: var(--Blue-400);
+    }
+
+    &.status-attention {
+      background: var(--crit-bg);
+      color: var(--crit);
+    }
+
+    &.status-completed {
+      background: var(--ok-bg);
+      color: var(--ok);
+    }
+  }
+
+  .progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+
+    .progress-track {
+      width: 140px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--Neutral-20);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--ok);
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+  }
+
+  .timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    font-weight: 600;
+    min-width: 64px;
+  }
+}
+
+.assembly .pill-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--Blue-500);
+  color: #04121f;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  &.ghost {
+    background: transparent;
+    border-color: var(--Neutral-30);
+    color: var(--Neutral-80);
+    font-weight: 500;
+
+    &:hover:not(:disabled),
+    &.active {
+      background: var(--Neutral-20);
+      color: var(--Neutral-90);
+    }
+
+    &.active {
+      border-color: var(--Blue-500);
+    }
+  }
+
+  &.danger {
+    background: transparent;
+    border-color: var(--crit);
+    color: var(--crit);
+  }
+}
+
+.assembly .text-button {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+
+.assembly .icon-button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--Neutral-30);
+  background: transparent;
+  color: var(--Neutral-60);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--Neutral-20);
+    color: var(--Neutral-90);
+  }
+}
+
+/* ---------- body ---------- */
+
+.assembly-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ---------- camera stage ---------- */
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  min-height: 0;
+  transition: border-color 0.2s ease;
+
+  &.stage-alert {
+    border-color: var(--warn);
+  }
+
+  &.stage-critical {
+    border-color: var(--crit);
+    animation: stage-pulse 1.2s ease-in-out infinite;
+  }
+
+  &.stage-complete {
+    border-color: var(--ok);
+  }
+
+  // the picture, with status chips, alerts and subtitles on top of it
+  .stage-view {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .stage-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .stage-placeholder {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: 56px 28px 28px;
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    h2 {
+      font-size: 22px;
+      color: #fff;
+    }
+
+    h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--Neutral-60);
+      margin-bottom: 6px;
+    }
+
+    > p {
+      color: var(--Neutral-80);
+      max-width: 70ch;
+    }
+
+    ul,
+    ol {
+      margin: 0;
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .placeholder-columns {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+      margin-top: 8px;
+    }
+
+    .inline-icon {
+      vertical-align: -4px;
+      color: var(--Blue-400);
+    }
+
+    .samples {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--Neutral-80);
+    }
+
+    .hint {
+      margin-top: 12px;
+      color: var(--Neutral-60);
+      font-size: 13px;
+    }
+  }
+
+  .stage-top {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    gap: 8px;
+    pointer-events: none;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.65);
+    color: var(--Neutral-80);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--Neutral-50);
+    }
+
+    &.live {
+      color: #fff;
+
+      .dot {
+        background: var(--ok);
+        animation: dot-pulse 1.6s ease-in-out infinite;
+      }
+    }
+
+    &.observation {
+      font-weight: 400;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex-shrink: 1;
+      display: block;
+
+      .material-symbols-outlined {
+        font-size: 14px;
+        vertical-align: -2px;
+        margin-right: 4px;
+      }
+    }
+  }
+
+  // alerts sit above the picture so they never hide the work
+  .banners {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  .banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 15px;
+
+    > .material-symbols-outlined {
+      font-size: 30px;
+    }
+
+    .banner-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+
+      strong {
+        font-size: 17px;
+      }
+    }
+
+    &.banner-warning {
+      background: var(--warn);
+      color: #201400;
+    }
+
+    &.banner-critical {
+      background: #d93a00;
+      color: #fff;
+    }
+
+    &.banner-error {
+      background: var(--Neutral-20);
+      color: var(--Neutral-90);
+      border: 1px solid var(--crit);
+
+      > .material-symbols-outlined {
+        color: var(--crit);
+      }
+
+      strong {
+        font-size: 15px;
+      }
+
+      span {
+        font-size: 13px;
+        color: var(--Neutral-80);
+      }
+    }
+  }
+
+  // instruction and player sit under the picture so they never hide the work
+  .stage-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px 12px;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+  }
+
+  .file-player {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: var(--Neutral-15);
+    border: 1px solid var(--Neutral-30);
+    font-size: 12px;
+    color: var(--Neutral-80);
+
+    input[type="range"] {
+      flex: 1;
+      min-width: 60px;
+      accent-color: var(--Blue-500);
+    }
+
+    .file-time {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .file-name {
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--Neutral-60);
+    }
+
+    .file-hint {
+      color: var(--warn);
+      white-space: nowrap;
+    }
+  }
+
+  .caption {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 8px;
+    max-width: calc(100% - 24px);
+    padding: 6px 12px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    font-size: 15px;
+
+    .material-symbols-outlined {
+      color: var(--Blue-400);
+      margin-top: 2px;
+    }
+  }
+
+  .instruction {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: var(--Neutral-15);
+    border: 1px solid var(--Neutral-30);
+
+    .instruction-count {
+      font-size: 30px;
+      font-weight: 700;
+      color: var(--Blue-400);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+
+      small {
+        font-size: 15px;
+        color: var(--Neutral-60);
+        font-weight: 500;
+      }
+    }
+
+    .instruction-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .instruction-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--Neutral-60);
+      font-weight: 600;
+    }
+
+    .instruction-title {
+      font-size: 18px;
+      color: #fff;
+    }
+
+    &.instruction-complete {
+      border-color: var(--ok);
+
+      .big {
+        font-size: 38px;
+        color: var(--ok);
+      }
+
+      .instruction-label {
+        color: var(--ok);
+      }
+    }
+  }
+}
+
+/* ---------- side column ---------- */
+
+.assembly-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  scrollbar-width: thin;
+
+  .side-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--Neutral-60);
+  }
+}
+
+.step-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+
+    &.expected {
+      background: var(--Neutral-15);
+      border-color: var(--Blue-500);
+    }
+
+    &.step-skipped {
+      background: var(--crit-bg);
+      border-color: var(--crit);
+    }
+  }
+
+  .step-icon {
+    font-size: 22px;
+    margin-top: 1px;
+    color: var(--Neutral-50);
+  }
+
+  .step-in_progress .step-icon {
+    color: var(--Blue-400);
+  }
+
+  .step-done .step-icon {
+    color: var(--ok);
+  }
+
+  .step-skipped .step-icon {
+    color: var(--crit);
+  }
+
+  .step-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .step-title {
+    font-weight: 600;
+    color: var(--Neutral-90);
+  }
+
+  .step-done .step-title {
+    color: var(--Neutral-60);
+  }
+
+  .step-number {
+    color: var(--Neutral-60);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 6px;
+    border: 1px solid var(--Neutral-30);
+    color: var(--Neutral-60);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    vertical-align: 1px;
+
+    &.critical {
+      border-color: var(--warn);
+      color: var(--warn);
+    }
+  }
+
+  .step-meta {
+    font-size: 12px;
+    color: var(--Neutral-60);
+  }
+
+  .step-skipped .step-meta {
+    color: var(--crit);
+    font-weight: 600;
+  }
+
+  .step-instruction {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--Neutral-80);
+  }
+
+  .step-actions {
+    opacity: 0.5;
+  }
+
+  .step:hover .step-actions,
+  .step-actions:focus-within {
+    opacity: 1;
+  }
+}
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+  }
+
+  .tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--Neutral-60);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &.active {
+      background: var(--Neutral-20);
+      color: var(--Neutral-90);
+    }
+
+    .count {
+      min-width: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: var(--crit);
+      color: #fff;
+      font-size: 11px;
+      line-height: 18px;
+      text-align: center;
+    }
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .empty {
+    color: var(--Neutral-60);
+    font-size: 13px;
+    padding: 6px 2px;
+  }
+
+  .issue {
+    padding: 8px 10px;
+    border-radius: 10px;
+    border-left: 4px solid var(--Neutral-50);
+    background: var(--Neutral-15);
+
+    &.severity-warning {
+      border-left-color: var(--warn);
+    }
+
+    &.severity-critical {
+      border-left-color: var(--crit);
+    }
+
+    &.resolved {
+      opacity: 0.55;
+      border-left-color: var(--ok);
+    }
+
+    .issue-head {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--Neutral-60);
+    }
+
+    .issue-type {
+      font-weight: 700;
+      color: var(--Neutral-80);
+    }
+
+    .issue-step {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .issue-time {
+      margin-left: auto;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .issue-message {
+      margin-top: 2px;
+      font-weight: 600;
+    }
+
+    .issue-fix {
+      margin-top: 2px;
+      font-size: 13px;
+      color: var(--Neutral-80);
+    }
+
+    .issue-foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--Neutral-60);
+    }
+  }
+
+  .event {
+    display: grid;
+    grid-template-columns: 40px 18px 1fr;
+    gap: 6px;
+    align-items: start;
+    font-size: 13px;
+
+    .event-time {
+      color: var(--Neutral-60);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .event-icon {
+      font-size: 16px;
+      margin-top: 1px;
+      color: var(--Neutral-60);
+    }
+
+    .event-source {
+      color: var(--Neutral-50);
+      font-size: 12px;
+    }
+
+    &.event-step_completed .event-icon,
+    &.event-issue_resolved .event-icon,
+    &.event-run_completed .event-icon {
+      color: var(--ok);
+    }
+
+    &.event-issue_raised .event-icon,
+    &.event-step_skipped .event-icon {
+      color: var(--crit);
+    }
+
+    &.event-ai_speech .event-icon {
+      color: var(--Blue-400);
+    }
+
+    &.event-ai_speech .event-text,
+    &.event-operator_speech .event-text {
+      font-style: italic;
+    }
+  }
+}
+
+.simulator {
+  border: 1px dashed var(--Blue-500);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  header {
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    color: var(--Neutral-60);
+
+    strong {
+      color: var(--Blue-400);
+      font-size: 13px;
+    }
+  }
+
+  .simulator-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    button {
+      text-align: left;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--Neutral-30);
+      background: var(--Neutral-15);
+      color: var(--Neutral-90);
+      font-size: 13px;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: var(--Neutral-20);
+      }
+    }
+  }
+}
+
+/* ---------- procedure editor ---------- */
+
+.assembly .modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.assembly .modal {
+  width: min(820px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--Neutral-10);
+  border: 1px solid var(--Neutral-30);
+  border-radius: 16px;
+  padding: 16px;
+
+  header,
+  footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  header {
+    justify-content: space-between;
+
+    h2 {
+      font-size: 18px;
+      color: #fff;
+    }
+  }
+
+  .modal-help {
+    font-size: 13px;
+    color: var(--Neutral-80);
+
+    code {
+      background: var(--Neutral-20);
+      padding: 0 4px;
+      border-radius: 4px;
+    }
+  }
+
+  .modal-editor {
+    flex: 1;
+    min-height: 320px;
+    resize: vertical;
+    background: var(--Neutral-00);
+    color: var(--Neutral-90);
+    border: 1px solid var(--Neutral-30);
+    border-radius: 10px;
+    padding: 10px;
+    font-family: "Space Mono", Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .modal-errors {
+    margin: 0;
+    padding: 8px 8px 8px 26px;
+    border-radius: 8px;
+    background: var(--crit-bg);
+    color: var(--Red-400);
+    font-size: 13px;
+  }
+}
+
+@keyframes stage-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 70, 0, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 70, 0, 0.35);
+  }
+}
+
+@keyframes dot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage.stage-critical,
+  .stage .chip.live .dot {
+    animation: none;
+  }
+}
+
+// Narrow or short windows: stack everything and scroll the page, so the
+// picture keeps a usable size instead of being squeezed by the panels.
+@media (max-width: 1000px), (max-height: 700px) {
+  .assembly {
+    overflow-y: auto;
+  }
+
+  .assembly-body {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+  }
+
+  .stage {
+    flex: none;
+  }
+
+  .stage .stage-view {
+    flex: none;
+    height: 56vw;
+    min-height: 240px;
+    max-height: 70vh;
+  }
+
+  .assembly-side {
+    overflow: visible;
+  }
+}
